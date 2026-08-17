@@ -25,7 +25,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
 	return (
 		<html lang="en" className={`${poppins.variable} ${geistMono.variable} h-full antialiased`}>
 			<head>
-				<Script data-goatcounter="https://ryloriz.goatcounter.com/count" async src="//gc.zgo.at/count.js"></Script>
+				<Script defer src="https://umami.ops.rizwaan.dev/recorder.js" data-website-id="630a4449-a316-4de6-9677-5518141a54d5"></Script>
 			</head>
 			<body className="min-h-full flex flex-col bg-bg text-ink">{children}</body>
 		</html>
