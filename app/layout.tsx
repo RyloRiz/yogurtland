@@ -1,29 +1,33 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Poppins } from "next/font/google";
 import "./globals.css";
+import Script from "next/script";
 
 // Poppins is the real Yogurtland site's own UI font (alongside a licensed
 // Gotham we can't use), so it's the authentic choice for a brand-matched reskin.
 const poppins = Poppins({
-  variable: "--font-poppins",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+	variable: "--font-poppins",
+	subsets: ["latin"],
+	weight: ["300", "400", "500", "600", "700"],
 });
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+	variable: "--font-geist-mono",
+	subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "Flavor Finder",
-  description: "Find every nearby Yogurtland that has all the flavors you want, right now.",
+	title: "Flavor Finder",
+	description: "Find every nearby Yogurtland that has all the flavors you want, right now.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
-  return (
-    <html lang="en" className={`${poppins.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-bg text-ink">{children}</body>
-    </html>
-  );
+	return (
+		<html lang="en" className={`${poppins.variable} ${geistMono.variable} h-full antialiased`}>
+			<head>
+				<Script data-goatcounter="https://ryloriz.goatcounter.com/count" async src="//gc.zgo.at/count.js"></Script>
+			</head>
+			<body className="min-h-full flex flex-col bg-bg text-ink">{children}</body>
+		</html>
+	);
 }
