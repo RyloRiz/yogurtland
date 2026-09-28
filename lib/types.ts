@@ -24,6 +24,12 @@ export type Store = {
   hoursMessage: string;
   orderUrl: string;
   flavorIds: number[];
+  // True when the upstream feed gave us no usable flavor data for this store
+  // on the latest ingest run, and flavorIds was carried over from the previous
+  // snapshot instead. Internal signal only -- not surfaced in the UI. A stale
+  // store's flavor list may be out of date; a consumer that cares can treat
+  // this as a cue to check the store's own page on yogurtland.com directly.
+  stale: boolean;
 };
 
 export type Flavor = {

@@ -79,6 +79,7 @@ export type Store = {
   hoursMessage: string;
   orderUrl: string;
   flavorIds: number[];
+  stale: boolean;
 };
 
 export type Flavor = {
@@ -159,12 +160,32 @@ async function main() {
     if (!data.has_more) break;
   }
 
+  // Previous snapshot, used as a fallback when this run's feed drops a store's
+  // flavor data or the store's whole listing (both seen in practice during
+  // Yogurtland's overnight flavor-refresh window -- see snapshot.yml). A store
+  // that goes truly Closed still comes through with that status and is
+  // excluded normally below; this fallback only covers the feed staying
+  // silent about a store it told us was Open yesterday.
+  let prevStoresById = new Map<number, Store>();
+  try {
+    const prevRaw = await readFile(path.join(OUT_DIR, "stores.json"), "utf-8");
+    prevStoresById = new Map((JSON.parse(prevRaw) as Store[]).map((s) => [s.id, s]));
+  } catch {
+    // no previous snapshot to fall back to
+  }
+
   const stores: Store[] = [];
   const flavorMap = new Map<number, Flavor>();
+  const seenIds = new Set<number>();
+  let staleCount = 0;
 
   for (const entry of entries) {
     const loc = entry.Location;
     if (!loc) continue;
+
+    const id = Number(loc.id);
+    if (Number.isFinite(id)) seenIds.add(id);
+
     if (loc.country_code !== "US") continue;
     if (loc.status !== "Open") continue;
 
@@ -172,11 +193,18 @@ async function main() {
     const lng = Number(loc.longitude);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
 
-    const flavorIds = parseFlavorIds(loc.flavors);
-    if (flavorIds.length === 0) continue;
+    let flavorIds = parseFlavorIds(loc.flavors);
+    let stale = false;
+    if (flavorIds.length === 0) {
+      const prev = prevStoresById.get(id);
+      if (!prev || prev.flavorIds.length === 0) continue;
+      flavorIds = prev.flavorIds;
+      stale = true;
+    }
+    if (stale) staleCount++;
 
     stores.push({
-      id: Number(loc.id),
+      id,
       name: loc.name,
       address: loc.address,
       address2: loc.address_2 ?? "",
@@ -191,18 +219,32 @@ async function main() {
       hoursMessage: loc.hours_message ?? "",
       orderUrl: loc.olo_identifier ?? "",
       flavorIds,
+      stale,
     });
 
     for (const f of entry.Flavor ?? []) {
-      const id = Number(f.id);
-      if (!Number.isFinite(id) || flavorMap.has(id)) continue;
-      flavorMap.set(id, {
-        id,
+      const fid = Number(f.id);
+      if (!Number.isFinite(fid) || flavorMap.has(fid)) continue;
+      flavorMap.set(fid, {
+        id: fid,
         name: f.name,
         description: f.description ?? "",
         contains: f.contains ?? "",
       });
     }
+  }
+
+  // Stores the feed didn't mention at all this run (not even as Closed) --
+  // carry the previous record forward rather than silently deleting a store
+  // that was open as of yesterday.
+  for (const [id, prev] of prevStoresById) {
+    if (seenIds.has(id)) continue;
+    stores.push({ ...prev, stale: true });
+    staleCount++;
+  }
+
+  if (staleCount > 0) {
+    console.warn(`Warning: ${staleCount} store(s) carried over from the previous snapshot (stale: true).`);
   }
 
   if (stores.length < MIN_STORE_COUNT) {
